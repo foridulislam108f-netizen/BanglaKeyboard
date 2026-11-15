@@ -20,15 +20,25 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Unzip project if uploaded as zip
+        run: |
+          if ! find . -not -path './.git/*' -type f \( -name 'settings.gradle.kts' -o -name 'settings.gradle' \) | grep -q .; then
+            Z=$(find . -not -path './.git/*' -type f -name '*.zip' | head -1)
+            if [ -n "$Z" ]; then
+              echo "Unzipping $Z"
+              mkdir -p _unzipped
+              unzip -q -o "$Z" -d _unzipped
+            fi
+          fi
+
       - name: Find project folder
         id: proj
         run: |
           echo "--- repo files ---"
           find . -not -path './.git/*' -not -path './.git' | head -100
-          # settings.gradle(.kts) যত গভীরেই থাকুক, খুঁজে বের করবে (সবচেয়ে ছোট পাথটা নেবে)
           F=$(find . -not -path './.git/*' -type f \( -name 'settings.gradle.kts' -o -name 'settings.gradle' \) | awk '{print length($0) " " $0}' | sort -n | head -1 | cut -d' ' -f2-)
           if [ -z "$F" ]; then
-            echo "::error::settings.gradle.kts পাওয়া যায়নি। রিপোতে প্রজেক্টের ফাইলগুলো (settings.gradle.kts, app/ ফোল্ডার ইত্যাদি) ঠিকমতো আপলোড হয়েছে কিনা দেখুন।"
+            echo "::error::settings.gradle.kts পাওয়া যায়নি।"
             exit 1
           fi
           DIR=$(dirname "$F")
