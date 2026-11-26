@@ -103,7 +103,16 @@ jobs:
           MAJOR=$(grep -oP 'versionName = "\K[0-9]+' app/build.gradle.kts | head -1)
           VER="${MAJOR:-3}.${GITHUB_RUN_NUMBER}"
           cp app/build/outputs/apk/debug/app-debug.apk BanglaBoard.apk
-          gh release delete "v$VER" --yes --cleanup-tag 2>/dev/null || true
-          gh release create "v$VER" BanglaBoard.apk \
-            --title "Bangla Board $VER" \
-            --notes "${NOTES:-New version}" --latest
+          # GitHub's network sometimes times out: try up to 5 times (delete + create together each time)
+          for i in 1 2 3 4 5; do
+            echo "=== Release attempt $i ==="
+            gh release delete "v$VER" --yes --cleanup-tag 2>/dev/null || true
+            if gh release create "v$VER" BanglaBoard.apk \
+                 --title "Bangla Board $VER" \
+                 --notes "${NOTES:-New version}" --latest; then
+              exit 0
+            fi
+            echo "Release failed, waiting before retry..."
+            sleep 20
+          done
+          exit 1
